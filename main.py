@@ -1596,9 +1596,12 @@ def launch():
     if ICON_FILE.exists():
         app.setWindowIcon(QIcon(str(ICON_FILE)))
     apply_preferences(QSettings("NodeDeck", "NodeDeck SSH"))
+    if smoke_test:
+        print("Qt initialized. Creating main window.", flush=True)
     window = MainWindow()
     window.show()
     if smoke_test:
+        print("Main window shown. Entering event loop.", flush=True)
         QTimer.singleShot(200, window.close)
     return app.exec()
 

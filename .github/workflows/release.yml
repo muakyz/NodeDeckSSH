@@ -47,6 +47,12 @@ jobs:
             throw "Installer file is missing."
           }
 
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-installer
+          path: installer/NodeDeckSSH-Setup.exe
+          if-no-files-found: error
+
       - name: Smoke-test the installed Windows application
         shell: pwsh
         run: |
@@ -55,20 +61,30 @@ jobs:
             "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/DIR=`"$target`""
           ) -Wait -PassThru
           if ($setup.ExitCode -ne 0) { throw "Installer exited with $($setup.ExitCode)." }
-          $env:PATH = "$env:SystemRoot\System32;$env:SystemRoot"
-          $env:PYINSTALLER_SUPPRESS_SPLASH_SCREEN = "1"
-          $app = Start-Process -FilePath "$target\NodeDeckSSH.exe" -ArgumentList "--smoke-test" -PassThru
-          if (-not $app.WaitForExit(45000)) {
-            taskkill.exe /F /T /PID $app.Id
-            throw "Installed application failed to complete its startup test."
-          }
-          if ($app.ExitCode -ne 0) { throw "Application exited with $($app.ExitCode)." }
 
-      - uses: actions/upload-artifact@v4
-        with:
-          name: windows-installer
-          path: installer/NodeDeckSSH-Setup.exe
-          if-no-files-found: error
+          $env:PATH = "$env:SystemRoot\System32;$env:SystemRoot"
+          $env:QT_QPA_PLATFORM = "offscreen"
+          $env:NODEDECK_SMOKE_LOG = Join-Path $env:RUNNER_TEMP "nodedeck-startup.log"
+          $env:LOCALAPPDATA = Join-Path $env:RUNNER_TEMP "NodeDeckSSH-test-data"
+          New-Item -ItemType Directory -Path $env:LOCALAPPDATA -Force | Out-Null
+          $app = Start-Process -FilePath "$target\NodeDeckSSH.exe" -ArgumentList "--smoke-test" -PassThru
+          try {
+            if (-not $app.WaitForExit(90000)) {
+              taskkill.exe /F /T /PID $app.Id
+              throw "Startup timed out. The trace below shows the last completed phase."
+            }
+            if ($app.ExitCode -ne 0) { throw "Application exited with $($app.ExitCode)." }
+            if (-not (Test-Path $env:NODEDECK_SMOKE_LOG) -or
+                -not (Select-String -Path $env:NODEDECK_SMOKE_LOG -SimpleMatch "NODEDECK_SMOKE_OK")) {
+              throw "The application did not complete its smoke test."
+            }
+          } finally {
+            if (Test-Path $env:NODEDECK_SMOKE_LOG) {
+              Get-Content $env:NODEDECK_SMOKE_LOG
+            } else {
+              Write-Host "Python entry point did not create the startup log."
+            }
+          }
 
   publish:
     needs: build

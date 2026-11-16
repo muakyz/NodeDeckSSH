@@ -36,7 +36,7 @@ if not exist "%NODEDECK_PYTHON_DLL%" (
   echo python3.dll is missing. Use full x64 Python from python.org.
   goto :error
 )
-.venv\Scripts\python.exe -m PyInstaller --clean --noconfirm --onefile --windowed --name NodeDeckSSH --icon "assets\nodedeck.ico" --add-data "assets;assets" --add-binary "%NODEDECK_PYTHON_DLL%;." --collect-all winpty --copy-metadata pykeepass --hidden-import win32timezone main.py
+.venv\Scripts\python.exe -m PyInstaller --clean --noconfirm --onefile --windowed --name NodeDeckSSH --icon "assets\nodedeck.ico" --add-data "assets;assets" --add-binary "%NODEDECK_PYTHON_DLL%;." --collect-all winpty --copy-metadata pykeepass --hidden-import win32timezone launcher.py
 if errorlevel 1 goto :error
 echo [4/4] Hazir!
 echo EXE: %CD%\dist\NodeDeckSSH.exe
