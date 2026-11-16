@@ -1,0 +1,112 @@
+name: Windows release
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nodedeck-release
+  cancel-in-progress: false
+
+jobs:
+  build:
+    if: github.ref_type == 'tag'
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+          architecture: x64
+      - name: Verify release version
+        shell: pwsh
+        run: |
+          $version = python -c "from release_updates import VERSION; print(VERSION)"
+          if ($version -notmatch '^\d+\.\d+\.\d+$' -or $env:GITHUB_REF_NAME -ne "v$version") {
+            throw "Tag and application version must match."
+          }
+          if (-not (Select-String -Path NodeDeckInstaller.iss -SimpleMatch "#define AppVersion `"$version`"")) {
+            throw "Installer version and application version must match."
+          }
+
+      - name: Build Windows installer
+        shell: pwsh
+        run: |
+          if (-not (Get-Command iscc.exe -ErrorAction SilentlyContinue) -and
+              -not (Test-Path "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe") -and
+              -not (Test-Path "$env:ProgramFiles\Inno Setup 6\ISCC.exe")) {
+            choco install innosetup --yes --no-progress
+            if ($LASTEXITCODE -ne 0) { throw "Inno Setup installation failed." }
+          }
+          cmd /d /c build_installer.bat
+          if ($LASTEXITCODE -ne 0) { throw "Installer build failed." }
+          if (-not (Test-Path installer/NodeDeckSSH-Setup.exe -PathType Leaf)) {
+            throw "Installer file is missing."
+          }
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-installer
+          path: installer/NodeDeckSSH-Setup.exe
+          if-no-files-found: error
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: windows-installer
+      - name: Publish installer and prepare update manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="$GITHUB_REF_NAME"
+          release_api="repos/$GITHUB_REPOSITORY/releases"
+          published="$(gh api --paginate "$release_api?per_page=100" --jq '.[] | select(.draft == false and .prerelease == false) | .tag_name')"
+          newest="$(printf '%s\n' "$published" "$tag" | awk '/^v[0-9]+\.[0-9]+\.[0-9]+$/' | sort -V | tail -n 1)"
+          if [[ "$newest" != "$tag" ]]; then
+            echo "Refusing to replace the update feed with an older release ($tag < $newest)."
+            exit 1
+          fi
+
+          if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            if [[ "$(gh release view "$tag" --repo "$GITHUB_REPOSITORY" --json isDraft --jq .isDraft)" == true ]]; then
+              gh release upload "$tag" NodeDeckSSH-Setup.exe --clobber --repo "$GITHUB_REPOSITORY"
+              gh release edit "$tag" --draft=false --latest --repo "$GITHUB_REPOSITORY"
+            fi
+          else
+            gh release create "$tag" --verify-tag --draft --generate-notes --repo "$GITHUB_REPOSITORY"
+            gh release upload "$tag" NodeDeckSSH-Setup.exe --repo "$GITHUB_REPOSITORY"
+            gh release edit "$tag" --draft=false --latest --repo "$GITHUB_REPOSITORY"
+          fi
+
+          download="$(gh api "$release_api/tags/$tag" --jq '.assets[] | select(.name == "NodeDeckSSH-Setup.exe") | .browser_download_url')"
+          [[ "$download" == https://* ]]
+          mkdir -p pages
+          jq -n --arg version "${tag#v}" --arg download_url "$download" \
+            '{version: $version, download_url: $download_url}' > pages/latest.json
+
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: pages
+
+  deploy-feed:
+    needs: publish
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/deploy-pages@v4
+        id: deployment
