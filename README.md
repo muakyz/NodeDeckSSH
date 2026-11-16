@@ -1,4 +1,4 @@
-# NodeDeck SSH v0.10.3
+# NodeDeck SSH v0.10.4
 
 Windows 10/11 için sekmeli SSH bağlantı yöneticisi. Yeni sunucu eklerken parola kaynağını seçebilirsiniz.
 
@@ -9,15 +9,15 @@ Windows 10/11 için sekmeli SSH bağlantı yöneticisi. Yeni sunucu eklerken par
 1. Create a public GitHub repository and put the **contents** of the `NodeDeckSSH` directory at its root. Include `.github/workflows/release.yml` and `.gitignore`. Public release assets are downloadable without a GitHub login. The repository should contain only source and packaging files.
 2. In **Settings → Pages**, select **GitHub Actions** as the publishing source. Set the custom domain to `updates.waytfeys.uk`. At your DNS provider, create a **CNAME** from `updates` to `GITHUB-OWNER.github.io` using your actual account or organization name. For Cloudflare DNS, use **DNS only** for the Pages CNAME. Leave the root domain as configured. Enable **Enforce HTTPS** once GitHub provisions the certificate.
 3. If the `github-pages` environment restricts deployments to particular branches, allow the release tags used by this workflow under **Settings → Environments → github-pages → Deployment branches and tags**. Allow tags matching `v*`.
-4. In the desktop application's **Settings → Data & updates**, existing installations with a custom feed can change it to `https://updates.waytfeys.uk/latest.json`. Version 0.10.3 uses this address by default.
+4. In the desktop application's **Settings → Data & updates**, existing installations with a custom feed can change it to `https://updates.waytfeys.uk/latest.json`. Version 0.10.4 uses this address by default.
 
 ### Publish each release
 
-The first included release version is `0.10.3`. For later versions, change `VERSION` in `release_updates.py` and `AppVersion` in `NodeDeckInstaller.iss` to the same number and push your commit. Create a matching Git tag from the commit you want to release:
+The first included release version is `0.10.4`. For later versions, change `VERSION` in `release_updates.py` and `AppVersion` in `NodeDeckInstaller.iss` to the same number and push your commit. Create a matching Git tag from the commit you want to release:
 
 ```sh
-git tag v0.10.3
-git push origin v0.10.3
+git tag v0.10.4
+git push origin v0.10.4
 ```
 
 **Actions → Windows release** builds the Windows Setup EXE, publishes it under **Releases**, and deploys `latest.json` to GitHub Pages. The domain serves the update manifest. GitHub Releases serves `NodeDeckSSH-Setup.exe`. The update checker opens the installer download link after confirmation. For local builds, run `build_installer.bat` on Windows with Python 3.11–3.13 x64 and Inno Setup 6. The target PC does not need Python.

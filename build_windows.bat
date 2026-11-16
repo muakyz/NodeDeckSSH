@@ -8,6 +8,10 @@ echo ================================================
 echo   NODEDECK SSH - WINDOWS EXE BUILDER
 echo ================================================
 echo.
+if defined pythonLocation (
+  set PYTHON="%pythonLocation%\python.exe"
+  goto :venv
+)
 where py >nul 2>nul
 if %ERRORLEVEL%==0 (
   set "PYTHON=py -3"
@@ -20,6 +24,7 @@ if %ERRORLEVEL%==0 (
   )
   set "PYTHON=python"
 )
+:venv
 if not exist .venv\Scripts\python.exe (
   echo [1/4] Sanal Python ortami olusturuluyor...
   %PYTHON% -m venv .venv
@@ -31,12 +36,12 @@ if errorlevel 1 goto :error
 .venv\Scripts\python.exe -m pip install -r requirements.txt
 if errorlevel 1 goto :error
 echo [3/4] Windows EXE olusturuluyor...
-for /f "delims=" %%D in ('.venv\Scripts\python.exe -c "import sys; print(sys.base_prefix)"') do set "NODEDECK_PYTHON_DLL=%%D\python3.dll"
-if not exist "%NODEDECK_PYTHON_DLL%" (
+for /f "delims=" %%D in ('.venv\Scripts\python.exe -c "import sys; print(sys.base_prefix)"') do set "NODEDECK_PYTHON_HOME=%%D"
+if not exist "%NODEDECK_PYTHON_HOME%\python3.dll" (
   echo python3.dll is missing. Use full x64 Python from python.org.
   goto :error
 )
-.venv\Scripts\python.exe -m PyInstaller --clean --noconfirm --onefile --windowed --name NodeDeckSSH --icon "assets\nodedeck.ico" --add-data "assets;assets" --add-binary "%NODEDECK_PYTHON_DLL%;." --collect-all winpty --copy-metadata pykeepass --hidden-import win32timezone launcher.py
+.venv\Scripts\python.exe -m PyInstaller --clean --noconfirm --onefile --windowed --name NodeDeckSSH --icon "assets\nodedeck.ico" --add-data "assets;assets" --add-binary "%NODEDECK_PYTHON_HOME%\python3.dll;." --add-binary "%NODEDECK_PYTHON_HOME%\vcruntime140.dll;." --collect-all winpty --copy-metadata pykeepass --hidden-import win32timezone launcher.py
 if errorlevel 1 goto :error
 echo [4/4] Hazir!
 echo EXE: %CD%\dist\NodeDeckSSH.exe

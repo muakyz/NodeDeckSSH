@@ -1,6 +1,6 @@
 ; Optional Inno Setup installer. Run build_windows.bat first.
 #define AppName "NodeDeck SSH"
-#define AppVersion "0.10.3"
+#define AppVersion "0.10.4"
 #define AppExe "NodeDeckSSH.exe"
 [Setup]
 AppId={{B9B427E1-3B15-4C71-ACBD-D5802E343A9D}
