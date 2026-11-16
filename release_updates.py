@@ -4,7 +4,7 @@ import re
 from urllib.parse import urlsplit
 from urllib.request import urlopen
 
-VERSION = "0.10.1"
+VERSION = "0.10.2"
 DEFAULT_FEED_URL = "https://updates.waytfeys.uk/latest.json"
 
 

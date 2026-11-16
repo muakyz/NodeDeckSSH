@@ -47,6 +47,23 @@ jobs:
             throw "Installer file is missing."
           }
 
+      - name: Smoke-test the installed Windows application
+        shell: pwsh
+        run: |
+          $target = Join-Path $env:RUNNER_TEMP "NodeDeckSSH-test"
+          $setup = Start-Process -FilePath "$PWD\installer\NodeDeckSSH-Setup.exe" -ArgumentList @(
+            "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/DIR=`"$target`""
+          ) -Wait -PassThru
+          if ($setup.ExitCode -ne 0) { throw "Installer exited with $($setup.ExitCode)." }
+          $env:PATH = "$env:SystemRoot\System32;$env:SystemRoot"
+          $env:PYINSTALLER_SUPPRESS_SPLASH_SCREEN = "1"
+          $app = Start-Process -FilePath "$target\NodeDeckSSH.exe" -ArgumentList "--smoke-test" -PassThru
+          if (-not $app.WaitForExit(45000)) {
+            taskkill.exe /F /T /PID $app.Id
+            throw "Installed application failed to complete its startup test."
+          }
+          if ($app.ExitCode -ne 0) { throw "Application exited with $($app.ExitCode)." }
+
       - uses: actions/upload-artifact@v4
         with:
           name: windows-installer

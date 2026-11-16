@@ -31,7 +31,12 @@ if errorlevel 1 goto :error
 .venv\Scripts\python.exe -m pip install -r requirements.txt
 if errorlevel 1 goto :error
 echo [3/4] Windows EXE olusturuluyor...
-.venv\Scripts\python.exe -m PyInstaller --clean --noconfirm --onefile --windowed --name NodeDeckSSH --icon "assets\nodedeck.ico" --add-data "assets;assets" --collect-all winpty --copy-metadata pykeepass --hidden-import win32timezone main.py
+for /f "delims=" %%D in ('.venv\Scripts\python.exe -c "import sys; print(sys.base_prefix)"') do set "NODEDECK_PYTHON_DLL=%%D\python3.dll"
+if not exist "%NODEDECK_PYTHON_DLL%" (
+  echo python3.dll is missing. Use full x64 Python from python.org.
+  goto :error
+)
+.venv\Scripts\python.exe -m PyInstaller --clean --noconfirm --onefile --windowed --name NodeDeckSSH --icon "assets\nodedeck.ico" --add-data "assets;assets" --add-binary "%NODEDECK_PYTHON_DLL%;." --collect-all winpty --copy-metadata pykeepass --hidden-import win32timezone main.py
 if errorlevel 1 goto :error
 echo [4/4] Hazir!
 echo EXE: %CD%\dist\NodeDeckSSH.exe

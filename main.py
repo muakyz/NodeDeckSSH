@@ -1573,6 +1573,10 @@ class MainWindow(QMainWindow):
 
 
 def launch():
+    smoke_test = "--smoke-test" in sys.argv
+    if smoke_test and getattr(sys, "frozen", False) and os.name == "nt":
+        if not (BASE / "python3.dll").is_file():
+            raise RuntimeError("Packaged python3.dll is missing.")
     app = QApplication(sys.argv)
     app.setApplicationName("NodeDeck SSH")
     app.setOrganizationName("NodeDeck")
@@ -1594,6 +1598,8 @@ def launch():
     apply_preferences(QSettings("NodeDeck", "NodeDeck SSH"))
     window = MainWindow()
     window.show()
+    if smoke_test:
+        QTimer.singleShot(200, window.close)
     return app.exec()
 
 
